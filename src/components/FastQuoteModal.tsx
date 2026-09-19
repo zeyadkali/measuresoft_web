@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { QuoteRequest } from '../types';
+import { sanitizeText, isValidEmail } from '../lib/sanitize';
 
 export const FastQuoteModal: React.FC = () => {
   const { activeQuoteProduct, setActiveQuoteProduct, language, submitQuoteRequest } = useApp();
@@ -27,35 +28,50 @@ export const FastQuoteModal: React.FC = () => {
   const [rigLocation, setRigLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedQuote, setSubmittedQuote] = useState<QuoteRequest | null>(null);
+  const [modalError, setModalError] = useState('');
 
   if (!activeQuoteProduct) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName || !companyName || !email || !phone) return;
+    const cleanName = sanitizeText(clientName, 100);
+    const cleanCompany = sanitizeText(companyName, 120);
+    const cleanEmail = sanitizeText(email, 120);
+    const cleanPhone = sanitizeText(phone, 30);
 
+    if (!cleanName || !cleanCompany || !cleanEmail || !cleanPhone) {
+      setModalError(isArabic ? 'يرجى استكمال جميع بيانات الاتصال' : 'Please fill all required contact details');
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      setModalError(isArabic ? 'البريد الإلكتروني غير صحيح' : 'Please enter a valid business email');
+      return;
+    }
+
+    setModalError('');
     setIsSubmitting(true);
     try {
       const quote = await submitQuoteRequest({
-        clientName,
-        companyName,
-        email,
-        phone,
+        clientName: cleanName,
+        companyName: cleanCompany,
+        email: cleanEmail,
+        phone: cleanPhone,
         country: 'Egypt',
-        rigOrProjectLocation: rigLocation,
+        rigOrProjectLocation: sanitizeText(rigLocation, 150),
         urgency: 'immediate',
-        additionalNotes: targetGasOrSpecs,
+        additionalNotes: sanitizeText(targetGasOrSpecs, 500),
         customItems: [
           {
             product: activeQuoteProduct,
-            quantity,
-            targetGas: targetGasOrSpecs
+            quantity: Math.max(1, Math.min(quantity, 999)),
+            targetGas: targetGasOrSpecs ? sanitizeText(targetGasOrSpecs, 50) : undefined
           }
         ]
       });
       setSubmittedQuote(quote);
     } catch {
-      alert('Error submitting quotation request.');
+      setModalError(isArabic ? 'تعذر إرسال الطلب، يرجى المحاولة لاحقاً' : 'Failed to submit quotation request.');
     } finally {
       setIsSubmitting(false);
     }
@@ -268,6 +284,13 @@ export const FastQuoteModal: React.FC = () => {
                 className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:border-amber-500 focus:outline-hidden"
               />
             </div>
+
+            {modalError && (
+              <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <button
               type="submit"

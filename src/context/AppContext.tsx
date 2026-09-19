@@ -18,6 +18,7 @@ import {
   INITIAL_BRANDS,
   INITIAL_BLOG_POSTS
 } from '../data/initialData';
+import { sanitizeText } from '../lib/sanitize';
 
 interface AppContextType {
   language: Language;
@@ -110,38 +111,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [];
       }
     }
-    return [
-      {
-        id: 'quote-sample-1',
-        quoteNumber: 'MS-RFQ-2026-9041',
-        clientName: 'Eng. Hany Mostafa',
-        companyName: 'Belayim Petroleum Company (Petrobel)',
-        email: 'h.mostafa@petrobel.org',
-        phone: '+20 100 234 5678',
-        country: 'Egypt',
-        rigOrProjectLocation: 'Gulf of Suez - Platform Belayim Marine 4',
-        urgency: 'immediate',
-        additionalNotes: 'Urgent replacement of 6 H2S detectors and pneumatic degasser unit ahead of high-pressure exploratory drilling campaign.',
-        items: [
-          {
-            productId: 'crowcon-xgs-fixed-h2s',
-            productName: 'Crowcon Xgard Bright Addressable Fixed Gas Detector with OLED Display',
-            productCode: 'CW-XGB-H2S',
-            quantity: 6,
-            targetGas: 'H2S (0-100 ppm)'
-          },
-          {
-            productId: 'ms-pdeg-500-degasser',
-            productName: 'Measuresoft PDEG-500 Pneumatic Mud Logging Gas Degasser & Agitator',
-            productCode: 'MS-PDEG-500',
-            quantity: 1,
-            targetGas: 'Total Mud Gas'
-          }
-        ],
-        status: 'reviewed',
-        submittedAt: '2026-09-17T09:30:00.000Z'
-      }
-    ];
+    return [];
   });
 
   const [quoteCart, setQuoteCart] = useState<QuoteCartItem[]>(() => {
@@ -260,21 +230,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newRequest: QuoteRequest = {
       id: `quote-${Date.now()}`,
       quoteNumber,
-      clientName: clientData.clientName,
-      companyName: clientData.companyName,
-      email: clientData.email,
-      phone: clientData.phone,
-      country: clientData.country,
-      rigOrProjectLocation: clientData.rigOrProjectLocation,
+      clientName: sanitizeText(clientData.clientName, 100),
+      companyName: sanitizeText(clientData.companyName, 120),
+      email: sanitizeText(clientData.email, 120),
+      phone: sanitizeText(clientData.phone, 30),
+      country: sanitizeText(clientData.country, 60),
+      rigOrProjectLocation: sanitizeText(clientData.rigOrProjectLocation, 150),
       urgency: clientData.urgency,
-      additionalNotes: clientData.additionalNotes,
+      additionalNotes: sanitizeText(clientData.additionalNotes, 1500),
       items: itemsToQuote.map(item => ({
         productId: item.product.id,
         productName: item.product.name,
         productCode: item.product.code,
-        quantity: item.quantity,
-        targetGas: item.targetGas,
-        projectNote: item.projectNote
+        quantity: Math.max(1, Math.min(item.quantity, 999)),
+        targetGas: item.targetGas ? sanitizeText(item.targetGas, 50) : undefined,
+        projectNote: item.projectNote ? sanitizeText(item.projectNote, 300) : undefined
       })),
       status: 'new',
       submittedAt: new Date().toISOString()

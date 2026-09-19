@@ -18,6 +18,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { QuoteRequest } from '../types';
+import { sanitizeText, isValidEmail } from '../lib/sanitize';
 
 export const QuoteRequestPage: React.FC = () => {
   const {
@@ -44,6 +45,7 @@ export const QuoteRequestPage: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedQuote, setSubmittedQuote] = useState<QuoteRequest | null>(null);
+  const [formError, setFormError] = useState('');
 
   const handleAddEquipment = () => {
     if (!selectedProductId) return;
@@ -56,28 +58,42 @@ export const QuoteRequestPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName || !companyName || !email || !phone) return;
+    const cleanName = sanitizeText(clientName, 100);
+    const cleanCompany = sanitizeText(companyName, 120);
+    const cleanEmail = sanitizeText(email, 120);
+    const cleanPhone = sanitizeText(phone, 30);
 
-    if (quoteCart.length === 0) {
-      alert(isArabic ? 'يرجى اختيار معدة واحدة على الأقل لطلب تسعيرها' : 'Please select at least one equipment item to quote.');
+    if (!cleanName || !cleanCompany || !cleanEmail || !cleanPhone) {
+      setFormError(isArabic ? 'يرجى استكمال جميع بيانات الاتصال المطلوبة' : 'Please complete all required contact fields');
       return;
     }
 
+    if (!isValidEmail(cleanEmail)) {
+      setFormError(isArabic ? 'يرجى إدخال بريد إلكتروني صالح' : 'Please provide a valid business email');
+      return;
+    }
+
+    if (quoteCart.length === 0) {
+      setFormError(isArabic ? 'يرجى اختيار معدة واحدة على الأقل لطلب تسعيرها' : 'Please select at least one equipment item to quote.');
+      return;
+    }
+
+    setFormError('');
     setIsSubmitting(true);
     try {
       const quote = await submitQuoteRequest({
-        clientName,
-        companyName,
-        email,
-        phone,
-        country,
-        rigOrProjectLocation: rigLocation,
+        clientName: cleanName,
+        companyName: cleanCompany,
+        email: cleanEmail,
+        phone: cleanPhone,
+        country: sanitizeText(country, 60),
+        rigOrProjectLocation: sanitizeText(rigLocation, 150),
         urgency,
-        additionalNotes: notes
+        additionalNotes: sanitizeText(notes, 1500)
       });
       setSubmittedQuote(quote);
     } catch {
-      alert('Error submitting quote');
+      setFormError(isArabic ? 'حدث خطأ أثناء معالجة الطلب' : 'Error processing quote request');
     } finally {
       setIsSubmitting(false);
     }
@@ -425,6 +441,13 @@ export const QuoteRequestPage: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {formError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
 
             <button
               type="submit"

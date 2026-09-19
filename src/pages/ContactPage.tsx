@@ -14,6 +14,7 @@ import {
   Award
 } from 'lucide-react';
 import { BRANCHES } from '../data/initialData';
+import { sanitizeText, isValidEmail } from '../lib/sanitize';
 
 export const ContactPage: React.FC = () => {
   const { language, navigateTo } = useApp();
@@ -26,10 +27,25 @@ export const ContactPage: React.FC = () => {
   const [inquiryType, setInquiryType] = useState('sales');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !message) return;
+    const cleanName = sanitizeText(name, 100);
+    const cleanEmail = sanitizeText(email, 120);
+    const cleanMessage = sanitizeText(message, 2000);
+
+    if (!cleanName || !cleanEmail || !cleanMessage) {
+      setValidationError(isArabic ? 'يرجى إدخال الحقول الإلزامية بشكل صحيح' : 'Please fill all mandatory fields correctly');
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      setValidationError(isArabic ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please provide a valid business email address');
+      return;
+    }
+
+    setValidationError('');
     setSubmitted(true);
   };
 
@@ -185,6 +201,12 @@ export const ContactPage: React.FC = () => {
                     className="w-full p-2.5 rounded-lg border border-slate-300 focus:border-amber-500 focus:outline-hidden"
                   />
                 </div>
+
+                {validationError && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+                    {validationError}
+                  </div>
+                )}
 
                 <button
                   type="submit"

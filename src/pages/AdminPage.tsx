@@ -20,7 +20,13 @@ import {
   Mail,
   X,
   Save,
-  ShieldCheck
+  ShieldCheck,
+  Lock,
+  KeyRound,
+  ShieldAlert,
+  LogOut,
+  ArrowLeft,
+  Key
 } from 'lucide-react';
 
 export const AdminPage: React.FC = () => {
@@ -34,10 +40,72 @@ export const AdminPage: React.FC = () => {
     updateProduct,
     deleteProduct,
     updateQuoteStatus,
-    language
+    language,
+    navigateTo
   } = useApp();
 
   const isArabic = language === 'ar';
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('measuresoft_admin_auth') === 'true';
+  });
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isLockedOut, setIsLockedOut] = useState(false);
+  const [isChangePinOpen, setIsChangePinOpen] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [pinChangeSuccess, setPinChangeSuccess] = useState('');
+
+  const getStoredPin = () => localStorage.getItem('measuresoft_admin_pin') || '2026';
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLockedOut) return;
+
+    const currentPin = getStoredPin();
+    if (pinInput === currentPin) {
+      sessionStorage.setItem('measuresoft_admin_auth', 'true');
+      setIsAuthenticated(true);
+      setPinError('');
+      setFailedAttempts(0);
+    } else {
+      const nextFail = failedAttempts + 1;
+      setFailedAttempts(nextFail);
+      if (nextFail >= 4) {
+        setIsLockedOut(true);
+        setPinError(isArabic ? 'تم قفل الدخول مؤقتاً بسبب تكرار المحاولات الخاطئة (30 ثانية)' : 'Too many failed attempts. Locked for 30 seconds.');
+        setTimeout(() => {
+          setIsLockedOut(false);
+          setFailedAttempts(0);
+          setPinError('');
+        }, 30000);
+      } else {
+        setPinError(isArabic ? `رمز المرور غير صحيح! متبقي ${4 - nextFail} محاولات.` : `Invalid PIN. ${4 - nextFail} attempts remaining.`);
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('measuresoft_admin_auth');
+    setIsAuthenticated(false);
+    setPinInput('');
+  };
+
+  const handleChangePin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPin.length < 4) {
+      setPinError(isArabic ? 'الرمز يجب ألا يقل عن 4 أرقام أو حروف' : 'PIN must be at least 4 characters');
+      return;
+    }
+    localStorage.setItem('measuresoft_admin_pin', newPin);
+    setPinChangeSuccess(isArabic ? 'تم تحديث رمز المرور بنجاح!' : 'PIN successfully updated!');
+    setTimeout(() => {
+      setIsChangePinOpen(false);
+      setNewPin('');
+      setPinChangeSuccess('');
+    }, 1500);
+  };
 
   const [activeTab, setActiveTab] = useState<'products' | 'quotes' | 'categories'>('products');
   const [productSearch, setProductSearch] = useState('');
@@ -179,8 +247,133 @@ export const AdminPage: React.FC = () => {
     downloadAnchor.remove();
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-slate-950 min-h-[85vh] flex items-center justify-center px-4 py-12">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+          <div className="w-16 h-16 bg-amber-500/10 border-2 border-amber-500 rounded-2xl flex items-center justify-center mx-auto text-amber-400">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono font-bold uppercase">
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>{isArabic ? 'منطقة مؤمنة ومقيدة' : 'Restricted Access Zone'}</span>
+            </div>
+            <h1 className="text-2xl font-black text-white tracking-tight">
+              {isArabic ? 'بوابة دخول إدارة Measuresoft' : 'Authorized Personnel Only'}
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {isArabic
+                ? 'يرجى إدخال رمز الأمان المعتمد للدخول إلى لوحة التحكم وإدارة طلبات التسعير والمنتجات.'
+                : 'Enter your verified security PIN to access quotations, catalog modifications, and system controls.'}
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                maxLength={20}
+                disabled={isLockedOut}
+                value={pinInput}
+                onChange={e => {
+                  setPinInput(e.target.value);
+                  setPinError('');
+                }}
+                placeholder={isArabic ? 'رمز الأمان (PIN الافتراضي: 2026)' : 'Security PIN (Default: 2026)'}
+                className="w-full text-center text-lg tracking-widest px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors disabled:opacity-50"
+                autoFocus
+              />
+            </div>
+
+            {pinError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium text-center">
+                {pinError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLockedOut || !pinInput}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-amber-500/10"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{isArabic ? 'تأكيد الدخول الآمن' : 'Authorize & Enter'}</span>
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => navigateTo('/')}
+              className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>{isArabic ? 'العودة للصفحة الرئيسية' : 'Return to Public Website'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-slate-100 min-h-screen pb-16">
+      {isChangePinOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Key className="w-4 h-4 text-amber-400" />
+                <span>{isArabic ? 'تغيير رمز مرور الإدارة' : 'Change Master PIN'}</span>
+              </h3>
+              <button
+                onClick={() => setIsChangePinOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleChangePin} className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">
+                  {isArabic ? 'الرمز الجديد (4 أرقام على الأقل)' : 'New Security PIN (min 4 chars)'}
+                </label>
+                <input
+                  type="password"
+                  value={newPin}
+                  onChange={e => setNewPin(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm"
+                  placeholder="e.g. 9842"
+                  required
+                />
+              </div>
+              {pinChangeSuccess && (
+                <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 text-xs">
+                  {pinChangeSuccess}
+                </div>
+              )}
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsChangePinOpen(false)}
+                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs"
+                >
+                  {isArabic ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-amber-500 text-slate-950 font-bold rounded-lg text-xs hover:bg-amber-400"
+                >
+                  {isArabic ? 'حفظ الرمز' : 'Save PIN'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-950 text-white border-b-4 border-amber-500 py-6 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -188,16 +381,29 @@ export const AdminPage: React.FC = () => {
               ADM
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight">
-                {isArabic ? 'لوحة تحكم Measuresoft المركزية' : 'Measuresoft Petroleum Systems Admin Console'}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight">
+                  {isArabic ? 'لوحة تحكم Measuresoft المركزية' : 'Measuresoft Petroleum Systems Admin Console'}
+                </h1>
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-mono rounded font-bold uppercase">
+                  {isArabic ? 'جلسة مؤمنة' : 'Encrypted Session'}
+                </span>
+              </div>
               <p className="text-xs text-slate-400">
                 {isArabic ? 'إدارة كتالوج المنتجات، طلبات عروض الأسعار، والمواصفات الفنية' : 'Catalog Management & Commercial RFQ Pipeline Engine'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center flex-wrap gap-2 text-xs">
+            <button
+              onClick={() => setIsChangePinOpen(true)}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold flex items-center gap-1.5 transition-colors"
+              title={isArabic ? 'تغيير رمز المرور' : 'Change Master PIN'}
+            >
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isArabic ? 'رمز الأمان' : 'Security PIN'}</span>
+            </button>
             <button
               onClick={handleExportQuotesJSON}
               className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold flex items-center gap-1.5 transition-colors"
@@ -211,6 +417,13 @@ export const AdminPage: React.FC = () => {
             >
               <Plus className="w-4 h-4" />
               <span>{isArabic ? 'إضافة معدة جديدة' : 'Add New Equipment'}</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-lg font-bold flex items-center gap-1.5 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{isArabic ? 'قفل الخروج' : 'Lock & Exit'}</span>
             </button>
           </div>
         </div>

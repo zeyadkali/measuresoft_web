@@ -1,4 +1,5 @@
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
@@ -15,10 +16,12 @@ import {
 import { ProductCard } from '../components/ProductCard';
 
 interface BlogPostPageProps {
-  slug: string;
+  slug?: string;
 }
 
-export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug }) => {
+export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug: propSlug }) => {
+  const params = useParams<{ slug: string }>();
+  const slug = propSlug || params.slug || '';
   const { blogPosts, products, language, navigateTo, setActiveQuoteProduct } = useApp();
   const isArabic = language === 'ar';
 

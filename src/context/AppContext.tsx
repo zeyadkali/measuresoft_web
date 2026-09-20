@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Language,
   Product,
@@ -73,14 +74,15 @@ const LOCAL_STORAGE_LANG_KEY = 'measuresoft_language_v1';
 const LOCAL_STORAGE_CART_KEY = 'measuresoft_cart_v1';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_LANG_KEY);
     return saved === 'ar' ? 'ar' : 'en';
   });
 
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    return window.location.pathname || '/';
-  });
+  const currentPath = location.pathname;
 
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_PRODUCTS_KEY);
@@ -156,19 +158,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(quoteCart));
   }, [quoteCart]);
 
-  useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname || '/');
-      window.scrollTo(0, 0);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
   const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
-    setCurrentPath(path);
+    navigate(path);
     window.scrollTo(0, 0);
   };
 

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -17,62 +18,18 @@ import { QuoteDrawer } from './components/QuoteDrawer';
 import { FastQuoteModal } from './components/FastQuoteModal';
 import { BrochureModal } from './components/BrochureModal';
 
-const AppContent: React.FC = () => {
-  const { currentPath, language } = useApp();
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPath]);
+  }, [pathname]);
 
-  const renderRoute = () => {
-    if (currentPath === '/' || currentPath === '') {
-      return <HomePage />;
-    }
+  return null;
+};
 
-    if (currentPath.startsWith('/catalog')) {
-      return <CatalogPage />;
-    }
-
-    if (currentPath.startsWith('/products/')) {
-      const slug = currentPath.replace('/products/', '');
-      return <ProductDetailPage slug={slug} />;
-    }
-
-    if (currentPath.startsWith('/about')) {
-      return <AboutPage />;
-    }
-
-    if (currentPath.startsWith('/qhse')) {
-      return <QhsePage />;
-    }
-
-    if (currentPath.startsWith('/contact')) {
-      return <ContactPage />;
-    }
-
-    if (currentPath.startsWith('/blog/')) {
-      const slug = currentPath.replace('/blog/', '');
-      return <BlogPostPage slug={slug} />;
-    }
-
-    if (currentPath.startsWith('/blog')) {
-      return <BlogPage />;
-    }
-
-    if (currentPath.startsWith('/quote')) {
-      return <QuoteRequestPage />;
-    }
-
-    if (currentPath.startsWith('/careers')) {
-      return <CareersPage />;
-    }
-
-    if (currentPath.startsWith('/admin')) {
-      return <AdminPage />;
-    }
-
-    return <HomePage />;
-  };
+const AppLayout: React.FC = () => {
+  const { language } = useApp();
 
   return (
     <div
@@ -81,9 +38,23 @@ const AppContent: React.FC = () => {
         language === 'ar' ? 'font-arabic' : 'font-sans'
       }`}
     >
+      <ScrollToTop />
       <Navbar />
       <main className="flex-1">
-        {renderRoute()}
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/products/:slug" element={<ProductDetailPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/qhse" element={<QhsePage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
+          <Route path="/quote" element={<QuoteRequestPage />} />
+          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="*" element={<HomePage />} />
+        </Routes>
       </main>
       <Footer />
 
@@ -97,7 +68,7 @@ const AppContent: React.FC = () => {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <AppLayout />
     </AppProvider>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ProductCard } from '../components/ProductCard';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -43,13 +44,14 @@ export const CatalogPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
+  const [searchParams] = useSearchParams();
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const qParam = params.get('q');
+    const qParam = searchParams.get('q');
     if (qParam && qParam !== searchQuery) {
       setSearchQuery(qParam);
     }
-  }, []);
+  }, [searchParams]);
 
   const atexOptions = ['Zone 0', 'Zone 1', 'Zone 2'];
   const commonGases = ['H2S', 'LEL', 'Hydrocarbons', 'VOC', 'CO', 'Oxygen', 'Radiation'];

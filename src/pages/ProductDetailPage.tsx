@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { ProductCard } from '../components/ProductCard';
@@ -21,10 +22,12 @@ import {
 } from 'lucide-react';
 
 interface ProductDetailPageProps {
-  slug: string;
+  slug?: string;
 }
 
-export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) => {
+export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug: propSlug }) => {
+  const params = useParams<{ slug: string }>();
+  const slug = propSlug || params.slug || '';
   const {
     products,
     categories,
